@@ -635,7 +635,7 @@ const DemographicPage: React.FC = () => {
                             <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" />
                           </Button>
                         </PopoverTrigger>
-                        <PopoverContent className="w-full p-0" align="start">
+                        <PopoverContent className="w-full p-0 bg-white" align="start">
                           <Command>
                             <CommandInput placeholder="Search country..." />
                             <CommandList>
@@ -668,7 +668,7 @@ const DemographicPage: React.FC = () => {
                             <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" />
                           </Button>
                         </PopoverTrigger>
-                        <PopoverContent className="w-full p-0" align="start">
+                        <PopoverContent className="w-full p-0 bg-white" align="start">
                           <Command>
                             <CommandInput placeholder="Search province..." />
                             <CommandList>
@@ -701,7 +701,7 @@ const DemographicPage: React.FC = () => {
                             <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" />
                           </Button>
                         </PopoverTrigger>
-                        <PopoverContent className="w-full p-0" align="start">
+                        <PopoverContent className="w-full p-0 bg-white" align="start">
                           <Command>
                             <CommandInput placeholder="Search city..." />
                             <CommandList>

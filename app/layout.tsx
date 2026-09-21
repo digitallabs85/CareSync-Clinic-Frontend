@@ -2,6 +2,7 @@ import "./globals.css";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Outfit } from "next/font/google";
 import app from '@/app.json'
+import { UserProfileProvider } from "./_context/UserProfileContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -35,15 +36,17 @@ export default function RootLayout({
         style={{ height: "100%", margin: 0, overflow: "auto" }}
         className={`${geistSans.variable} ${geistMono.variable} ${quicksand.variable} antialiased`}
       >
-          <div>
-              {children}
-            {/* ← Always mounted on every route */}
-            <div className="fixed bottom-0 left-0 right-0 z-999 pointer-events-none">
-              <div className="pointer-events-auto">
-              </div>
+        <div>
+          <UserProfileProvider>
+            {children}
+          </UserProfileProvider>
+          {/* ← Always mounted on every route */}
+          <div className="fixed bottom-0 left-0 right-0 z-999 pointer-events-none">
+            <div className="pointer-events-auto">
             </div>
-
           </div>
+
+        </div>
       </body>
     </html>
   );

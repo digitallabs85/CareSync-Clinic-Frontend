@@ -1,0 +1,100 @@
+@startuml Digital_Clinic_High_Level_With_Stack
+
+title Digital Clinic Ecosystem — High-Level Architecture with Tech Stack
+
+skinparam componentStyle rectangle
+skinparam defaultFontSize 10
+skinparam packageStyle rectangle
+skinparam linetype ortho
+
+package "Login & Authentication" {
+
+  package "Frontend (Kiosk) — Next.js 15 / React 19" {
+    [Login UI\n(Next.js + React Hook Form)] as Login
+    [Patient Registration\n(Next.js + React Hook Form)] as Reg
+    [Vitals Capture\n(Next.js + Webcam / BLE)] as Vitals
+    [Specialised Tests\n(Next.js + Canvas / Audio)] as Tests
+    [Video Call\n(Next.js + Agora SDK)] as Video
+    [Prescriptions\n(Next.js + PDF generation)] as Rx
+    [Reports\n(Next.js + jsPDF / react-pdf)] as Reports
+  }
+
+  package "Backend (API) — Express 5 / TypeScript" {
+    [Authentication\n(JWT + bcrypt)] as Auth
+    [Patient Management\n(Express + Drizzle ORM)] as PatientMgt
+    [Doctor Management\n(Express + Drizzle)] as DoctorMgt
+    [Queue Management\n(Express + Drizzle)] as Queue
+    [Consultation\n(Express + Agora SDK)] as Consult
+    [Inventory\n(Express + Drizzle)] as Inventory
+  }
+
+  database "PostgreSQL Database\n(Drizzle ORM + pg)" as DB
+
+  package "External Services" {
+    [Agora RTC\n(Real-time video/audio)] as VideoSvc
+    [Firebase\n(FCM push notifications)] as NotifySvc
+    [SMTP / Nodemailer\n(Email delivery)] as EmailSvc
+    [Cloudinary\n(Image upload & CDN)] as StorageSvc
+    [Hardware Devices\n(Bluetooth/USB / ESP32)] as HardwareSvc
+  }
+
+  Login --> Auth : authenticate
+  Auth --> DB : validate credentials
+
+  Login --> Reg : access after login
+  Login --> Vitals : access after login
+  Login --> Tests : access after login
+  Login --> Video : access after login
+  Login --> Rx : access after login
+  Login --> Reports : access after login
+
+  Reg --> PatientMgt : register
+  Vitals --> PatientMgt : save vitals
+  Tests --> PatientMgt : save test results
+  Video --> Consult : start call
+  Rx --> Inventory : check stock
+  Reports --> PatientMgt : generate PDF
+
+  PatientMgt --> DB : CRUD
+  DoctorMgt --> DB : CRUD
+  Queue --> DB : track
+  Consult --> DB : logs
+  Inventory --> DB : stock
+
+  Consult --> VideoSvc : RTC tokens
+  Consult --> NotifySvc : alert doctor
+  Reports --> EmailSvc : send PDF
+  Vitals --> StorageSvc : upload photos
+  Vitals --> HardwareSvc : read device data
+
+  note right of Reg
+    **Frontend Stack**
+    - Next.js 15 (App Router)
+    - React 19
+    - Tailwind CSS + shadcn
+    - TypeScript
+    - Electron (for desktop)
+  end note
+
+  note right of Auth
+    **Backend Stack**
+    - Express 5
+    - TypeScript
+    - Drizzle ORM
+    - PostgreSQL
+    - JWT / bcrypt
+    - Multer / Cloudinary
+  end note
+
+  note right of VideoSvc
+    **External Services**
+    - Agora RTC (video/audio)
+    - Firebase Cloud Messaging
+    - Nodemailer (SMTP)
+    - Cloudinary CDN
+    - Hardware (BLE / USB)
+  end note
+
+}
+
+@enduml

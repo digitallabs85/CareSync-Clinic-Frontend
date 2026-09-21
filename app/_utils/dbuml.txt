@@ -1,0 +1,247 @@
+@startuml
+
+' =======================
+' USERS
+' =======================
+class users {
+  +id : uuid
+  +username : varchar
+  +password : text
+  +location : text
+  +createdAt : timestamp
+  +name : text
+  +country : text
+  +city : text
+  +province : text
+}
+
+' =======================
+' ALL ENTRIES (PATIENTS)
+' =======================
+class all_entries {
+  +id : uuid
+  +phoneNumber : text
+  +firstName : text
+  +lastName : text
+  +father_husband : text
+  +age : int
+  +gender : text
+  +createdDate : date
+  +createdTime : time
+  +user_id : uuid
+  +email : text
+  +cnic : text
+  +dob : text
+  +country : text
+  +province : text
+  +city : text
+  +stAddress : text
+  +languages : text
+  +surgicalHistory : text
+  +medicalHistory : text
+  +medicineHistory : text
+  +allergies : text
+  +vitalsRecorded : boolean
+  +fcmToken : text
+  +token : varchar
+  +tokenDate : date
+  +tokenTime : time
+  +mrNumber : text
+  +profilePhoto : text
+  +countryCode : text
+}
+
+' =======================
+' VITALS
+' =======================
+class vitals {
+  +id : uuid
+  +PulseRate : text
+  +BloodOxygen : text
+  +Diastolic : text
+  +Systolic : text
+  +Temperature : text
+  +Weight : text
+  +Height : text
+  +symptoms : text
+  +bmi : text
+  +token : varchar
+  +patientType : text
+  +createdDate : date
+  +createdTime : time
+  +roomUrl : text
+  +roomName : text
+  +callStatus : text
+  +patient_id : uuid
+}
+
+' =======================
+' RAPID TESTING
+' =======================
+class rapid_testing {
+  +id : uuid
+  +bloodSugar : text
+  +ecg : text
+  +hiv : text
+  +hepatitis : text
+  +hbsag : text
+  +hcvAb : text
+  +hivAb : text
+  +dengueNs1Ag : text
+  +syphilisAb : text
+  +typhoidAb : text
+  +tuberculosis : text
+  +malariaPfPvAg : text
+  +hemoglobin : text
+  +cholesterol : text
+  +bodyFat : text
+  +createdDate : date
+  +createdTime : time
+  +vitals_id : uuid
+}
+
+' =======================
+' EYE TESTING
+' =======================
+class eye_testing {
+  +id : uuid
+  +chartType : text
+  +leftEye : text
+  +rightEye : text
+  +leftEyeResult : text
+  +rightEyeResult : text
+  +createdDate : date
+  +createdTime : time
+  +vitals_id : uuid
+}
+
+' =======================
+' COLOR BLIND TESTING
+' =======================
+class color_blind_testing {
+  +id : uuid
+  +plate1 : text
+  +plate2 : text
+  +plate3 : text
+  +colorBlindResult : text
+  +createdDate : date
+  +createdTime : time
+  +vitals_id : uuid
+}
+
+' =======================
+' HEARING TESTING
+' =======================
+class hearing_testing {
+  +id : uuid
+  +leftEar : text
+  +rightEar : text
+  +leftEarResult : text
+  +rightEarResult : text
+  +createdDate : date
+  +createdTime : time
+  +vitals_id : uuid
+}
+
+' =======================
+' DOCTORS
+' =======================
+class doctors {
+  +id : uuid
+  +title : varchar
+  +firstName : text
+  +lastName : text
+  +email : text
+  +password : text
+  +phone : varchar
+  +gender : text
+  +photo : text
+  +specializations : jsonb
+  +qualifications : jsonb
+  +experience : int
+  +city : text
+  +doctorStatus : text
+  +user_id : uuid
+  +createdDate : date
+  +createdTime : time
+  +updatedDate : date
+  +updatedTime : time
+  +fcmToken : text
+}
+
+' =======================
+' PRESCRIPTIONS
+' =======================
+class prescriptions {
+  +id : uuid
+  +patient_id : uuid
+  +doctor_id : uuid
+  +token : varchar
+  +prescriptionDate : date
+  +prescriptionTime : time
+  +diagnosis : text
+  +labTest : text
+  +clinicalNotes : text
+  +createdDate : date
+  +createdTime : time
+}
+
+class prescription_medicines {
+  +id : uuid
+  +prescription_id : uuid
+  +medicineName : text
+  +morning : boolean
+  +afternoon : boolean
+  +night : boolean
+  +beforeMeal : boolean
+  +afterMeal : boolean
+  +dosage : text
+  +duration : text
+}
+
+' =======================
+' DOCTOR LOGS
+' =======================
+class doctor_logs {
+  +id : uuid
+  +doctor_id : uuid
+  +action : text
+  +reason : text
+  +createdDate : date
+  +createdTime : time
+}
+
+' =======================
+' MEDICINE INVENTORY
+' =======================
+class medicine_inventry {
+  +id : serial
+  +name : text
+  +row : int
+  +column : int
+  +quantity : int
+  +createdDate : date
+  +createdTime : time
+}
+
+' =======================
+' RELATIONS
+' =======================
+
+users ||--o{ all_entries : creates
+users ||--o{ doctors : registers
+
+all_entries ||--o{ vitals : has
+vitals ||--o{ rapid_testing : includes
+vitals ||--o{ eye_testing : includes
+vitals ||--o{ color_blind_testing : includes
+vitals ||--o{ hearing_testing : includes
+
+all_entries ||--o{ prescriptions : receives
+doctors ||--o{ prescriptions : writes
+
+prescriptions ||--o{ prescription_medicines : contains
+
+doctors ||--o{ doctor_logs : generates
+
+@enduml

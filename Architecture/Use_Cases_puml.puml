@@ -1,0 +1,226 @@
+@startuml Digital_Clinic_UseCase_Annotated
+
+title Digital Clinic Ecosystem — End-to-End Use Case Flow\n(Success / Alternate / Failure paths per step)
+
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontSize 11
+skinparam ArrowColor #444444
+skinparam activityBorderColor #0297D6
+skinparam activityBackgroundColor #EAF6FC
+skinparam activityDiamondBorderColor #0297D6
+skinparam activityDiamondBackgroundColor #FFF3D6
+skinparam noteBackgroundColor #FFFDE7
+skinparam noteBorderColor #D8C46A
+skinparam ActivityFontSize 12
+skinparam NoteFontSize 10
+
+start
+
+partition "Login & Authentication (UC-01)" #EAF6FC {
+  :User enters credentials;
+  if (Credentials valid?) then (yes)
+    :JWT issued\n(role: Doctor or Clinic);
+    if (Role?) then (Doctor)
+      :Doctor-scoped JWT\nused for Consultation APIs;
+    else (Clinic)
+      :Clinic-scoped JWT\nused for Registration/Vitals/\nRapid Testing/Pharmacy APIs;
+    endif
+  else (no)
+    :Show "Invalid username\nor password";
+    note right: Unlimited retry attempts\n(no lockout policy)
+    stop
+  endif
+}
+
+partition "Registration / Demographics (UC-02)" #EAF6FC {
+  :Staff enters demographic fields\n+ captures patient photo (Cloudinary);
+  if (Phone number matches\nexisting patient?) then (auto-detected match)
+    :Popup: "Already exists —\nupdate?";
+    if (Update?) then (yes)
+      :Open existing record\nfor edit;
+    else (no)
+      :Continue as new entry;
+    endif
+  else (no match / manual find used)
+    :"Find by phone" button\n(auto-populate if found);
+  endif
+  :Staff submits form;
+  if (DB save succeeds?) then (yes)
+    :24h patient session token\ngenerated & carried forward;
+  else (no)
+    :Alert shown on save click;
+    note right: No field validation\ncurrently implemented\n(CNIC/phone/email format)
+    stop
+  endif
+}
+
+partition "Vitals Capture (UC-03)" #EAF6FC {
+  :Auto-reconnect to device\n(last used protocol: USB or BLE);
+  if (Device found?) then (yes)
+    :"Hardware Connected"\nreadings streamed in\n(range-constrained inputs);
+  else (no)
+    :"No USB cable found" /\nBluetooth not found;
+    :Staff manually enters values\n(same constrained inputs);
+    note right: "Reconnect" button in navbar\navailable anytime
+  endif
+  :Staff clicks Next;
+  :Vitals saved to DB\n(missing values → null);
+  :Auto-navigate to Rapid Testing;
+}
+
+partition "Rapid Testing (UC-04)" #EAF6FC {
+  :Operator sets status per test\n(11 tests: Not Performed /\nNormal / Consultation Required);
+  :Enter More Tests values\n(Hemoglobin, Cholesterol, Body Fat\n— no validation);
+  :Blood Sugar via BLE glucometer;
+  if (BLE send succeeds?) then (yes)
+    :Reading populates block;
+  else (no)
+    :Error shown ON DEVICE only\n(no in-app fallback);
+  endif
+  :Operator clicks ECG →\nopens Kardia app;
+  if (Kardia report found\nin Downloads?) then (yes)
+    :Renamed to session ID\n→ uploaded to Cloudinary;
+    :"View ECG Report" available;
+  else (no)
+    :Nothing happens\n(silent fault, no retry);
+  endif
+  :Operator clicks Next;
+  :Save all statuses + Blood Sugar\n+ ECG link\n(missing → "Not Performed");
+  note right: No test mandatory to proceed
+  :Navigate to Eye Screening;
+}
+
+partition "Eye Screening (UC-05)" #EAF6FC {
+  if (Skip All pressed?) then (yes)
+    :Skip Eye + Color Blind\n+ Hearing entirely;
+    -[#red]-> Video Call / Consultation;
+  else (no)
+    if (Prior result exists?) then (yes)
+      :Dialog: Perform Again\n(new row, old kept) or\nNext (use old result);
+    else (no)
+    endif
+    :Select chart (English/Urdu/\nShapes/Mix);
+    :Cover right eye → test left eye\n(row-by-row Yes/No);
+    :Classify: denom ≤40 Normal,\n>40 Consultation Required;
+    :Cover left eye → test right eye\n(same process);
+    if (Skip pressed?) then (yes)
+      :No DB row saved;
+    else (no)
+      :Save result → auto-navigate\nto Color Blind Test;
+    endif
+  endif
+}
+
+partition "Color Blind Screening (UC-06)" #EAF6FC {
+  if (Prior result exists?) then (yes)
+    :Dialog: Perform Again or\nNext (use old result);
+  else (no)
+  endif
+  if (Skip pressed on 1st plate?) then (yes)
+    :Save "Not Performed" row\n(skipped: true);
+    note right: Inconsistent with Eye Screening,\nwhich saves NO row on skip
+  else (no)
+    :3 Ishihara plates,\noperator selects patient's answer;
+    :correctCount ≥2 → Normal,\n<2 → Consultation Required;
+    :Save result;
+  endif
+  :Proceed to Hearing Test;
+}
+
+partition "Hearing Screening (UC-07)" #EAF6FC {
+  :"Connect Headphones First"\nmodal + demo sweep tone;
+  if (Prior result exists?) then (yes)
+    :Dialog: Perform Again or\nNext (use old result);
+  else (no)
+  endif
+  if (Skip pressed,\nno frequencies recorded yet?) then (yes)
+    :No DB row saved;
+  else (no)
+    :Test left ear: 6 frequencies,\nadjust dB, YES/Can't Hear;
+    :Switch to right ear,\nrepeat;
+    if (Both ears attempted\n≥1 frequency?) then (yes)
+      :Finish → avg threshold ≤40dB\nNormal, >40dB Consultation;
+      :Save result;
+    else (no)
+      :Alert: complete other ear first\n→ auto-switch tab;
+      stop
+    endif
+  endif
+  :Navigate to Screening\nSummary & Report;
+}
+
+partition "Screening Summary & Report (UC-08)" #EAF6FC {
+  :Operator adds symptoms\n(free-text + multi-select);
+  fork
+    :Send to Email;
+    if (Email on file?) then (yes)
+      :Auto-send;
+    else (no)
+      :Popup: enter email;
+    endif
+    if (Send succeeds?) then (yes)
+    else (no)
+      :Failure alert shown;
+    endif
+  fork again
+    :Download PDF\n(client-side, DB-sourced data);
+  fork again
+    :Print via thermal printer;
+    :Select paired Bluetooth device\n→ connect → print;
+    if (Connect fails?) then (yes)
+      :"Could not connect"\n→ Retry / Change device;
+    else (yes)
+      :Report printed;
+    endif
+  end fork
+  note right #FFE0E0
+    Mandatory stop point —
+    NO in-page "Next" button.
+    Operator must use sidebar
+    to reach Consultation.
+  end note
+}
+
+partition "Video Call / Consultation (UC-09)" #EAF6FC {
+  :Operator opens Consultation\nvia sidebar (manual);
+  :Search patient by\ntoken / name / phone\n(mandatory);
+  :Click "Consult" on patient row;
+  if (Symptoms recorded?) then (yes)
+  else (no)
+    :Inline popup to add\nsymptoms right here;
+  endif
+  :Select doctor from\nonline doctors list\n(offline doctors filtered out);
+  :Notify doctor via FCM;
+  if (Doctor responds\nwithin 2 minutes?) then (yes)
+    :Doctor accepts →\nboth join video room;
+    :Doctor sees Vitals only;
+    :Doctor may submit prescription\n(not mandatory) — patient\nsees it live if submitted;
+    if (Who ends call first?) then (Doctor ends)
+      :Operator auto-navigates\nto Pharmacy;
+    else (Patient/Operator ends)
+      :Doctor remains alone in room\nuntil they end it manually;
+      note right: No reconnect option\non patient/operator side
+    endif
+  else (no / cancelled)
+    if (Operator clicked\nCancel Call?) then (yes)
+      :DB: "Declined by patient";
+    else (timeout)
+      :DB: "Missed by doctor";
+    endif
+    :Operator may pick\na different doctor;
+    stop
+  endif
+}
+
+partition "Pharmacy (UC-10)" #EAF6FC {
+  :Search patient by\ntoken / name / phone;
+  if (Prescription exists?) then (yes)
+    :Row appears →\nView (on-screen + download)\nor Print (thermal, same\nBluetooth flow as Summary);
+    note right: No inventory/stock\nlogic currently implemented
+  else (no)
+    :No row appears;
+  endif
+  stop
+}
+
+@enduml

@@ -5,7 +5,7 @@ export const registerSW = async () => {
       console.log('Service Worker registered with scope:', registration.scope);
       return registration;
     } catch (err) {
-      console.error('Service Worker registration failed:', err);
+      console.error('Service Worker registration failed: ', err);
     }
   }
 };

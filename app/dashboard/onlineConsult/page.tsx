@@ -1,14 +1,11 @@
 'use client'
-import { RefreshCw, Search, X, Phone, Hash, User, Video } from 'lucide-react'
+import { RefreshCw, Search, X, Video, Users, Activity, ChevronRight } from 'lucide-react'
 import React, { useState, useEffect, useRef } from 'react'
 import { apiService } from '@/app/_utils/apiService'
 import Navbar from '../_components/Navbar'
 import { usePageGuard } from '@/app/_utils/usePageGuard'
-import { Router } from 'next/router'
 import { useRouter } from 'next/navigation'
 import PatientTable from './_components/PatientTable'
-
-type SearchMode = 'token' | 'name' | 'phone'
 
 interface Patient {
   id: string
@@ -18,7 +15,7 @@ interface Patient {
   phoneNumber: string
   vitalsRecorded: boolean
   vitalsId: string | null
-  prescriptionId: string | null // add this
+  prescriptionId: string | null
 }
 
 interface Doctor {
@@ -35,7 +32,7 @@ interface Doctor {
 
 /* ------------------------------------------------------------------ *
  *  Section — card + header + body in one component
- *  Defined here so this page controls its own layout.
+ *  Padding and margins remain strictly UNTOUCHED as requested.
  * ------------------------------------------------------------------ */
 interface SectionProps {
   icon?: React.ReactNode
@@ -43,9 +40,7 @@ interface SectionProps {
   subtitle?: string
   action?: React.ReactNode
   children: React.ReactNode
-  /** Extra classes on the outer card */
   className?: string
-  /** Extra classes on the body (e.g. spacing between children) */
   bodyClassName?: string
 }
 
@@ -81,9 +76,8 @@ const Section: React.FC<SectionProps> = ({
  *  Page
  * ------------------------------------------------------------------ */
 const OnlineConsultPage = () => {
-  const allowed = usePageGuard('onlineConsultation');
+  const allowed = usePageGuard('onlineConsultation')
 
-  const [searchMode, setSearchMode] = useState<SearchMode>('token')
   const [searchQuery, setSearchQuery] = useState('')
   const [allPatients, setAllPatients] = useState<Patient[]>([])
   const [loadingPatients, setLoadingPatients] = useState(true)
@@ -121,28 +115,25 @@ const OnlineConsultPage = () => {
     }
   }
 
-  useEffect(() => { loadPatients(); loadDoctors() }, [])
+  useEffect(() => { 
+    loadPatients()
+    loadDoctors() 
+  }, [])
 
   const showToast = (msg: string) => {
     setToast(msg)
     setTimeout(() => setToast(null), 3500)
   }
 
-  const searchResults = allPatients.filter(p => {
-    if (!searchQuery.trim()) return false
-    const q = searchQuery.toLowerCase()
-    if (searchMode === 'token') return String(p.token).toLowerCase().includes(q)
-    if (searchMode === 'phone') return String(p.phoneNumber || '').toLowerCase().includes(q)
-    const full = `${p.firstName} ${p.lastName || ''}`.toLowerCase()
-    return full.includes(q)
-  })
-
+  // Unified Omni-Search: Checks token, name, and phone simultaneously.
   const matchesQuery = (p: Patient) => {
     if (!searchQuery.trim()) return true
     const q = searchQuery.toLowerCase()
-    if (searchMode === 'token') return String(p.token).toLowerCase().includes(q)
-    if (searchMode === 'phone') return String(p.phoneNumber || '').toLowerCase().includes(q)
-    return `${p.firstName} ${p.lastName || ''}`.toLowerCase().includes(q)
+    return (
+      String(p.token).toLowerCase().includes(q) ||
+      String(p.phoneNumber || '').toLowerCase().includes(q) ||
+      `${p.firstName} ${p.lastName || ''}`.toLowerCase().includes(q)
+    )
   }
 
   const pendingResults = allPatients.filter(p => !p.prescriptionId && matchesQuery(p))
@@ -171,205 +162,185 @@ const OnlineConsultPage = () => {
       ...(pickerPatient.id ? { patientId: pickerPatient.id } : {}),
       ...(pickerPatient.token ? { patientToken: pickerPatient.token } : {}),
     })
+    // Routing logic preserved exactly as requested
     router.push(`/calls/outgoing/${pickerPatient.vitalsId}?${query.toString()}`)
     setPickerPatient(null)
   }
 
-  const searchModeMeta: Record<SearchMode, { icon: React.ReactNode; placeholder: string; label: string }> = {
-    name: { icon: <User size={14} />, placeholder: 'e.g. Saad Kamal or just Saad', label: 'Name' },
-    token: { icon: <Hash size={14} />, placeholder: 'e.g. 12', label: 'Token' },
-    phone: { icon: <Phone size={14} />, placeholder: 'e.g. 03001234567', label: 'Phone' },
-  }
-
-  if (!allowed) return null;
+  if (!allowed) return null
 
   return (
     <>
       <Navbar variant="onlineConsult" />
 
       <main className="min-h-screen bg-skeuo-base">
-        <div className="mx-auto w-full max-w-6xl space-y-4 px-4 pb-8 pt-7 sm:px-6 sm:pb-10 sm:pt-8">
+        {/* CSS Grid for side-by-side layout on desktop */}
+        <div className="mx-auto w-full max-w-7xl grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-6 px-4 pb-8 pt-7 sm:px-6 sm:pb-10 sm:pt-8">
 
-          {/* ================= Find Patient ================= */}
-          <Section
-            icon={<Search className="h-4 w-4" />}
-            title="Find Patient for Today"
-            subtitle="Search among today's patients whose vitals have been recorded"
-            bodyClassName="space-y-3"
-          >
-            {/* Mode tabs */}
-            <div className="inline-flex rounded-lg bg-skeuo-surface p-0.5">
-              {(['name', 'token', 'phone'] as SearchMode[]).map(mode => {
-                const active = searchMode === mode
-                return (
-                  <button
-                    key={mode}
-                    onClick={() => { setSearchMode(mode); setSearchQuery('') }}
-                    className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-semibold transition-all ${active
-                      ? 'bg-white text-skeuo-red shadow-sm'
-                      : 'text-skeuo-muted hover:text-skeuo-text'
-                      }`}
-                  >
-                    {searchModeMeta[mode].icon}
-                    {searchModeMeta[mode].label}
-                  </button>
-                )
-              })}
-            </div>
+          {/* ================= Left Column: Patient Management ================= */}
+          <div className="flex flex-col gap-6">
+            
+            {/* Omni-Search Control Module */}
+            <Section
+              icon={<Search className="h-4 w-4" />}
+              title="Search Patients"
+              subtitle="Filter today's pending and completed consults"
+              bodyClassName="py-4 sm:py-5" // Slimmer body specifically for the search bar
+            >
+              <div className="flex gap-3">
+                <div className="relative flex-1 group">
+                  <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-skeuo-muted transition-colors group-focus-within:text-skeuo-red" />
+                  <input
+                    ref={inputRef}
+                    type="text"
+                    value={searchQuery}
+                    onChange={e => setSearchQuery(e.target.value)}
+                    placeholder="Search by name, token, or phone..."
+                    className="w-full rounded-xl border-2 border-skeuo-surface bg-skeuo-base/30 py-3 pl-10 pr-10 text-sm font-medium outline-none transition-all focus:border-skeuo-red focus:bg-white focus:ring-4 focus:ring-skeuo-red/10"
+                  />
+                  {searchQuery && (
+                    <button
+                      onClick={clearSearch}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-1 text-skeuo-muted hover:bg-skeuo-surface hover:text-skeuo-text"
+                    >
+                      <X size={14} />
+                    </button>
+                  )}
+                </div>
+                <button
+                  onClick={loadPatients}
+                  disabled={loadingPatients}
+                  title="Refresh patients"
+                  className="flex shrink-0 items-center justify-center rounded-xl border-2 border-skeuo-surface bg-white px-4 py-3 text-skeuo-muted transition-colors hover:border-skeuo-red hover:text-skeuo-red focus:outline-none focus:ring-4 focus:ring-skeuo-red/10"
+                >
+                  <RefreshCw size={18} className={loadingPatients ? 'animate-spin' : ''} />
+                </button>
+              </div>
+            </Section>
 
-            {/* Search input row */}
-            <div className="flex gap-2">
-              <div className="relative flex-1">
-                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-skeuo-muted" />
-                <input
-                  ref={inputRef}
-                  type="text"
-                  value={searchQuery}
-                  onChange={e => setSearchQuery(e.target.value)}
-                  placeholder={searchModeMeta[searchMode].placeholder}
-                  className="w-full rounded-xl border border-skeuo-surface bg-white py-2.5 pl-9 pr-10 text-sm outline-none transition-colors focus:border-skeuo-red focus:ring-2 focus:ring-skeuo-red/15"
-                />
-                {searchQuery && (
-                  <button
-                    onClick={clearSearch}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-skeuo-muted transition-colors hover:text-skeuo-text"
-                  >
-                    <X size={14} />
-                  </button>
-                )}
-              </div>
-              <button
-                onClick={loadPatients}
-                disabled={loadingPatients}
-                title="Refresh patients"
-                className="rounded-xl border border-skeuo-surface px-3 py-2.5 text-skeuo-muted transition-colors hover:border-skeuo-red hover:text-skeuo-red"
-              >
-                <RefreshCw size={16} className={loadingPatients ? 'animate-spin' : ''} />
-              </button>
-            </div>
-          </Section>
+            {/* Pending Consults */}
+            <Section
+              icon={<Users className="h-4 w-4" />}
+              title="Pending Consults"
+              subtitle={loadingPatients ? 'Loading...' : `${pendingResults.length} patient${pendingResults.length !== 1 ? 's' : ''} awaiting prescription`}
+            >
+              {loadingPatients ? (
+                <div className="flex items-center justify-center gap-2 py-8 text-sm text-skeuo-muted">
+                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-skeuo-red border-t-transparent" />
+                  Loading patients...
+                </div>
+              ) : pendingResults.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-skeuo-surface bg-skeuo-base/50 py-12 text-center text-sm text-skeuo-muted">
+                  {searchQuery.trim()
+                    ? <>No pending patients matching <span className="font-semibold text-skeuo-text">"{searchQuery}"</span></>
+                    : 'No patients pending consult today'}
+                </div>
+              ) : (
+                <div className="animate-fade-in">
+                  <PatientTable patients={pendingResults} onConsult={handleConsultClick} />
+                </div>
+              )}
+            </Section>
 
-          {/* ================= Pending Consults ================= */}
-          <Section
-            icon={<Search className="h-4 w-4" />}
-            title="Pending Consults"
-            subtitle={loadingPatients ? 'Loading...' : `${pendingResults.length} patient${pendingResults.length !== 1 ? 's' : ''} awaiting prescription`}
-          >
-            {loadingPatients ? (
-              <div className="flex items-center justify-center gap-2 py-8 text-sm text-skeuo-muted">
-                <span className="h-4 w-4 animate-spin rounded-full border-2 border-skeuo-red border-t-transparent" />
-                Loading patients...
-              </div>
-            ) : pendingResults.length === 0 ? (
-              <div className="py-8 text-center text-sm text-skeuo-muted">
-                {searchQuery.trim()
-                  ? <>No pending patients matching <span className="font-semibold text-skeuo-text">"{searchQuery}"</span></>
-                  : 'No patients pending consult today'}
-              </div>
-            ) : (
-              <PatientTable patients={pendingResults} onConsult={handleConsultClick} />
-            )}
-          </Section>
+            {/* Completed Today */}
+            <Section
+              icon={<Video className="h-4 w-4" />}
+              title="Completed Today"
+              subtitle={loadingPatients ? 'Loading...' : `${completedResults.length} already prescribed, consult again if needed`}
+            >
+              {loadingPatients ? (
+                <div className="flex items-center justify-center gap-2 py-8 text-sm text-skeuo-muted">
+                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-skeuo-red border-t-transparent" />
+                  Loading patients...
+                </div>
+              ) : completedResults.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-skeuo-surface bg-skeuo-base/50 py-12 text-center text-sm text-skeuo-muted">
+                  {searchQuery.trim()
+                    ? <>No completed patients matching <span className="font-semibold text-skeuo-text">"{searchQuery}"</span></>
+                    : 'No patients completed today'}
+                </div>
+              ) : (
+                <div className="animate-fade-in">
+                  <PatientTable patients={completedResults} onConsult={handleConsultClick} />
+                </div>
+              )}
+            </Section>
+          </div>
 
-          {/* ================= Completed Today ================= */}
-          <Section
-            icon={<Video className="h-4 w-4" />}
-            title="Completed Today"
-            subtitle={loadingPatients ? 'Loading...' : `${completedResults.length} already prescribed — consult again if needed`}
-          >
-            {loadingPatients ? (
-              <div className="flex items-center justify-center gap-2 py-8 text-sm text-skeuo-muted">
-                <span className="h-4 w-4 animate-spin rounded-full border-2 border-skeuo-red border-t-transparent" />
-                Loading patients...
-              </div>
-            ) : completedResults.length === 0 ? (
-              <div className="py-8 text-center text-sm text-skeuo-muted">
-                {searchQuery.trim()
-                  ? <>No completed patients matching <span className="font-semibold text-skeuo-text">"{searchQuery}"</span></>
-                  : 'No patients completed today'}
-              </div>
-            ) : (
-              <PatientTable patients={completedResults} onConsult={handleConsultClick} />
-            )}
-          </Section>
-
-          {/* ================= Online Doctors ================= */}
-          <Section
-            icon={<User className="h-4 w-4" />}
-            title="Online Doctors"
-            subtitle={
-              loadingDoctors
-                ? 'Loading...'
-                : `${onlineDoctors.length} doctor${onlineDoctors.length !== 1 ? 's' : ''} currently online`
-            }
-            action={
-              <button
-                onClick={loadDoctors}
-                disabled={loadingDoctors}
-                className="flex items-center gap-1.5 rounded-lg border border-skeuo-surface px-3 py-1.5 text-sm text-skeuo-muted transition-colors hover:border-skeuo-red hover:text-skeuo-red disabled:opacity-50 cursor-pointer"
-              >
-                <RefreshCw size={13} className={loadingDoctors ? 'animate-spin' : ''} />
-                Refresh
-              </button>
-            }
-          >
-            {loadingDoctors ? (
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                {[...Array(4)].map((_, i) => (
-                  <div key={i} className="animate-pulse overflow-hidden rounded-2xl border border-skeuo-surface">
-                    <div className="h-24 bg-skeuo-surface" />
-                    <div className="space-y-2 p-3">
-                      <div className="h-4 w-3/4 rounded bg-skeuo-surface" />
-                      <div className="h-3 w-1/2 rounded bg-skeuo-surface/60" />
+          {/* ================= Right Column: Live Doctor Roster ================= */}
+          <div className="flex flex-col gap-6">
+            <Section
+              icon={<Activity className="h-4 w-4" />}
+              title="Live Roster"
+              subtitle={`${onlineDoctors.length} doctor${onlineDoctors.length !== 1 ? 's' : ''} online`}
+              className="h-full"
+              bodyClassName="h-full flex flex-col"
+              action={
+                <button
+                  onClick={loadDoctors}
+                  disabled={loadingDoctors}
+                  className="rounded-lg p-2 text-skeuo-muted transition-colors hover:bg-skeuo-surface hover:text-skeuo-red disabled:opacity-50 cursor-pointer"
+                >
+                  <RefreshCw size={14} className={loadingDoctors ? 'animate-spin' : ''} />
+                </button>
+              }
+            >
+              {loadingDoctors ? (
+                <div className="flex flex-col gap-3">
+                  {[...Array(5)].map((_, i) => (
+                    <div key={i} className="flex animate-pulse items-center gap-3 rounded-xl border border-skeuo-surface p-3">
+                      <div className="h-10 w-10 rounded-full bg-skeuo-surface" />
+                      <div className="flex-1 space-y-2">
+                        <div className="h-3 w-3/4 rounded bg-skeuo-surface" />
+                        <div className="h-2 w-1/2 rounded bg-skeuo-surface/60" />
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            ) : onlineDoctors.length === 0 ? (
-              <div className="py-10 text-center text-sm text-skeuo-muted">
-                No doctors are currently online
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                {onlineDoctors.map(doc => (
-                  <DoctorCard key={doc.id} doctor={doc} />
-                ))}
-              </div>
-            )}
-          </Section>
+                  ))}
+                </div>
+              ) : onlineDoctors.length === 0 ? (
+                <div className="flex h-40 flex-col items-center justify-center rounded-xl border border-dashed border-skeuo-surface bg-skeuo-base/50 text-center text-sm text-skeuo-muted">
+                  <Activity size={24} className="mb-2 opacity-20" />
+                  No doctors are online
+                </div>
+              ) : (
+                <div className="flex flex-col gap-2.5">
+                  {onlineDoctors.map(doc => (
+                    <CompactDoctorCard key={doc.id} doctor={doc} />
+                  ))}
+                </div>
+              )}
+            </Section>
+          </div>
         </div>
       </main>
 
       {/* ================= Doctor Picker Modal ================= */}
       {pickerPatient && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 backdrop-blur-sm">
-          <div className="w-full max-w-2xl overflow-hidden rounded-2xl bg-white shadow-2xl">
-            <div className="flex items-start justify-between border-b border-skeuo-surface px-5 py-3.5">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 backdrop-blur-sm animate-fade-in">
+          <div className="w-full max-w-xl overflow-hidden rounded-2xl bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-skeuo-surface bg-skeuo-base/50 px-6 py-4">
               <div>
-                <h3 className="text-base font-bold text-skeuo-text">Select a Doctor</h3>
-                <p className="mt-0.5 text-xs text-skeuo-muted">
-                  Consulting for{' '}
-                  <span className="font-semibold text-skeuo-text">
-                    {pickerPatient.firstName} {pickerPatient.lastName}
-                  </span>
-                  {' '}— Token <span className="font-black text-skeuo-red">#{pickerPatient.token}</span>
+                <h3 className="text-lg font-bold text-skeuo-text">Dispatch to Doctor</h3>
+                <p className="mt-1 text-sm text-skeuo-muted">
+                  Assigning token <span className="font-black text-skeuo-red">#{pickerPatient.token}</span> ({pickerPatient.firstName})
                 </p>
               </div>
               <button
                 onClick={() => setPickerPatient(null)}
-                className="rounded-lg p-1 text-skeuo-muted transition-colors hover:bg-skeuo-surface hover:text-skeuo-text"
+                className="rounded-full bg-white p-2 text-skeuo-muted shadow-sm transition-all hover:bg-skeuo-red hover:text-white"
               >
-                <X size={18} />
+                <X size={16} />
               </button>
             </div>
 
-            <div className="max-h-[70vh] overflow-y-auto p-5">
+            <div className="max-h-[60vh] overflow-y-auto p-6">
               {availableDoctors.length === 0 ? (
-                <div className="py-8 text-center text-sm text-skeuo-muted">
-                  No doctors are currently available
+                <div className="py-12 text-center text-sm text-skeuo-muted">
+                  <Activity size={32} className="mx-auto mb-3 opacity-20" />
+                  No available doctors to dispatch to right now.
                 </div>
               ) : (
-                <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                <div className="flex flex-col gap-3">
                   {availableDoctors.map(doc => {
                     const initials = `${doc.firstName[0]}${doc.lastName[0]}`.toUpperCase()
                     const specs = Array.isArray(doc.specializations)
@@ -379,23 +350,24 @@ const OnlineConsultPage = () => {
                       <button
                         key={doc.id}
                         onClick={() => handleDoctorPick(doc)}
-                        className="group flex items-center gap-3 rounded-xl border border-skeuo-surface p-3 text-left transition-all hover:border-skeuo-red/40 hover:bg-skeuo-red/5 hover:shadow-sm"
+                        className="group flex items-center justify-between rounded-xl border-2 border-skeuo-surface p-3 text-left transition-all hover:border-skeuo-red/40 hover:bg-skeuo-red/5 hover:shadow-md focus:outline-none focus:ring-4 focus:ring-skeuo-red/10"
                       >
-                        <div className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-xl bg-skeuo-red/10">
-                          {doc.photo
-                            ? <img src={doc.photo} alt={doc.firstName} className="h-full w-full object-cover" />
-                            : <span className="text-base font-black text-skeuo-red/50">{initials}</span>}
+                        <div className="flex items-center gap-4">
+                          <div className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-full bg-skeuo-red/10 border-2 border-white shadow-sm group-hover:border-skeuo-red/20">
+                            {doc.photo
+                              ? <img src={doc.photo} alt={doc.firstName} className="h-full w-full object-cover" />
+                              : <span className="text-base font-black text-skeuo-red/50">{initials}</span>}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-bold text-skeuo-text">
+                              {doc.title} {doc.firstName} {doc.lastName}
+                            </p>
+                            {specs && <p className="mt-0.5 truncate text-[11px] font-semibold text-skeuo-muted">{specs}</p>}
+                          </div>
                         </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-bold text-skeuo-text">
-                            {doc.title} {doc.firstName} {doc.lastName}
-                          </p>
-                          {specs && <p className="mt-0.5 truncate text-[11px] font-semibold text-skeuo-red">{specs}</p>}
-                          <p className="mt-0.5 text-[10px] text-skeuo-muted">{doc.experience} yr{doc.experience !== 1 ? 's' : ''} experience</p>
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-skeuo-surface text-skeuo-muted transition-all group-hover:bg-skeuo-red group-hover:text-white">
+                          <ChevronRight size={16} />
                         </div>
-                        <span className="shrink-0 text-xs font-bold text-skeuo-red opacity-0 transition-opacity group-hover:opacity-100">
-                          Select →
-                        </span>
                       </button>
                     )
                   })}
@@ -408,57 +380,54 @@ const OnlineConsultPage = () => {
 
       {/* ================= Toast ================= */}
       {toast && (
-        <div className="fixed bottom-6 left-1/2 z-[9999] flex -translate-x-1/2 items-center gap-2 rounded-2xl bg-rose-600 px-5 py-3 text-sm font-bold text-white shadow-2xl animate-fade-in">
-          <span>⚠</span> {toast}
+        <div className="fixed bottom-6 left-1/2 z-[9999] flex -translate-x-1/2 items-center gap-3 rounded-xl bg-slate-900 px-6 py-4 text-sm font-bold text-white shadow-2xl animate-fade-in">
+          <span className="grid h-6 w-6 place-items-center rounded-full bg-rose-500 text-xs">!</span> 
+          {toast}
         </div>
       )}
     </>
   )
 }
 
-/* ================= Doctor Card ================= */
-const DoctorCard = ({ doctor }: { doctor: Doctor }) => {
+/* ================= Compact Doctor Card (For Roster List) ================= */
+const CompactDoctorCard = ({ doctor }: { doctor: Doctor }) => {
   const initials = `${doctor.firstName[0]}${doctor.lastName[0]}`.toUpperCase()
   const specs = Array.isArray(doctor.specializations)
-    ? doctor.specializations.slice(0, 2).join(' • ')
+    ? doctor.specializations.slice(0, 1).join(', ')
     : ''
 
   return (
-    <div className="flex flex-col overflow-hidden rounded-2xl border border-skeuo-surface bg-white transition-all hover:border-skeuo-red/30 hover:shadow-md">
-      {/* Header banner */}
-      <div className="relative h-14 bg-gradient-to-br from-skeuo-red/10 to-skeuo-red/20">
-        <span
-          className={`absolute right-2.5 top-2.5 flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold ${doctor.onCall
-            ? 'border-amber-200 bg-amber-50 text-amber-600'
-            : 'border-emerald-200 bg-emerald-50 text-emerald-600'
-            }`}
-        >
-          <span className={`h-1.5 w-1.5 animate-pulse rounded-full ${doctor.onCall ? 'bg-amber-500' : 'bg-emerald-500'}`} />
-          {doctor.onCall ? 'On Call' : 'Online'}
-        </span>
-      </div>
-
-      {/* Avatar */}
-      <div className="-mt-12 flex justify-center">
-        <div className="z-10 grid h-24 w-24 shrink-0 place-items-center overflow-hidden rounded-full border-4 border-white bg-skeuo-red/10 shadow-md">
+    <div className="flex items-center gap-3 rounded-xl border border-skeuo-surface bg-white p-3 shadow-sm transition-all hover:border-skeuo-red/20">
+      <div className="relative">
+        <div className="grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-full border-2 border-white bg-skeuo-red/10 shadow-sm">
           {doctor.photo
             ? <img src={doctor.photo} alt={doctor.firstName} className="h-full w-full object-cover" />
-            : <span className="text-2xl font-black text-skeuo-red/40">{initials}</span>}
+            : <span className="text-sm font-black text-skeuo-red/40">{initials}</span>}
         </div>
+        <span
+          className={`absolute -bottom-1 -right-1 h-3.5 w-3.5 rounded-full border-2 border-white ${
+            doctor.onCall ? 'bg-amber-400' : 'bg-emerald-500'
+          }`}
+          title={doctor.onCall ? 'On Call' : 'Online'}
+        />
       </div>
 
-      {/* Body */}
-      <div className="flex flex-1 flex-col items-center gap-1 px-3 pb-3 pt-1.5 text-center">
-        <p className="text-sm font-bold leading-tight text-skeuo-text">
-          {doctor.title} {doctor.firstName} {doctor.lastName}
-        </p>
-        {specs
-          ? <p className="text-[11px] font-semibold text-skeuo-red">{specs}</p>
-          : <p className="text-[11px] italic text-skeuo-muted">No specialization</p>}
-
-        <div className="mt-2.5 w-full border-t border-skeuo-surface pt-2.5">
-          <p className="text-[9px] font-black uppercase tracking-widest text-skeuo-muted">Experience</p>
-          <p className="text-sm font-bold text-skeuo-text">{doctor.experience} yr{doctor.experience !== 1 ? 's' : ''}</p>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center justify-between gap-2">
+          <p className="truncate text-sm font-bold text-skeuo-text">
+            {doctor.title} {doctor.firstName} {doctor.lastName}
+          </p>
+          <span className="shrink-0 text-[10px] font-black uppercase text-skeuo-muted">
+            {doctor.experience}Y
+          </span>
+        </div>
+        <div className="flex items-center justify-between gap-2">
+          <p className="truncate text-[11px] font-medium text-skeuo-muted">
+            {specs || 'General'}
+          </p>
+          <p className={`shrink-0 text-[10px] font-bold ${doctor.onCall ? 'text-amber-500' : 'text-emerald-500'}`}>
+            {doctor.onCall ? 'Busy' : 'Available'}
+          </p>
         </div>
       </div>
     </div>

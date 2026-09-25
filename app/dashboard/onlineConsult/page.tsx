@@ -6,6 +6,7 @@ import Navbar from '../_components/Navbar'
 import { usePageGuard } from '@/app/_utils/usePageGuard'
 import { Router } from 'next/router'
 import { useRouter } from 'next/navigation'
+import PatientTable from './_components/PatientTable'
 
 type SearchMode = 'token' | 'name' | 'phone'
 
@@ -16,7 +17,8 @@ interface Patient {
   lastName?: string
   phoneNumber: string
   vitalsRecorded: boolean
-  vitalsId: string | null   // ← add this
+  vitalsId: string | null
+  prescriptionId: string | null // add this
 }
 
 interface Doctor {
@@ -90,8 +92,6 @@ const OnlineConsultPage = () => {
   const [loadingDoctors, setLoadingDoctors] = useState(true)
 
   const [pickerPatient, setPickerPatient] = useState<Patient | null>(null)
-  const [selectedDoctorId, setSelectedDoctorId] = useState<string | null>(null)
-  const [videoVitalsId, setVideoVitalsId] = useState<string | null>(null)
   const [toast, setToast] = useState<string | null>(null)
   const router = useRouter()
 
@@ -136,6 +136,17 @@ const OnlineConsultPage = () => {
     const full = `${p.firstName} ${p.lastName || ''}`.toLowerCase()
     return full.includes(q)
   })
+
+  const matchesQuery = (p: Patient) => {
+    if (!searchQuery.trim()) return true
+    const q = searchQuery.toLowerCase()
+    if (searchMode === 'token') return String(p.token).toLowerCase().includes(q)
+    if (searchMode === 'phone') return String(p.phoneNumber || '').toLowerCase().includes(q)
+    return `${p.firstName} ${p.lastName || ''}`.toLowerCase().includes(q)
+  }
+
+  const pendingResults = allPatients.filter(p => !p.prescriptionId && matchesQuery(p))
+  const completedResults = allPatients.filter(p => !!p.prescriptionId && matchesQuery(p))
 
   const clearSearch = () => {
     setSearchQuery('')
@@ -236,66 +247,49 @@ const OnlineConsultPage = () => {
                 <RefreshCw size={16} className={loadingPatients ? 'animate-spin' : ''} />
               </button>
             </div>
+          </Section>
 
-            {/* Results */}
-            {searchQuery.trim() && (
-              <div>
-                {loadingPatients ? (
-                  <div className="flex items-center justify-center gap-2 py-8 text-sm text-skeuo-muted">
-                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-skeuo-red border-t-transparent" />
-                    Loading patients...
-                  </div>
-                ) : searchResults.length === 0 ? (
-                  <div className="py-8 text-center text-sm text-skeuo-muted">
-                    No patients found for today matching{' '}
-                    <span className="font-semibold text-skeuo-text">"{searchQuery}"</span>
-                  </div>
-                ) : (
-                  <>
-                    <p className="mb-2 text-xs font-semibold text-skeuo-muted">
-                      {searchResults.length} result{searchResults.length !== 1 ? 's' : ''} found
-                    </p>
-                    <div className="overflow-hidden rounded-xl border border-skeuo-surface">
-                      <table className="w-full text-left">
-                        <thead className="border-b border-skeuo-surface bg-skeuo-base">
-                          <tr className="text-[11px] font-black uppercase tracking-widest text-skeuo-muted">
-                            <th className="px-4 py-2.5">Token</th>
-                            <th className="px-4 py-2.5">Name</th>
-                            <th className="hidden px-4 py-2.5 sm:table-cell">Phone</th>
-                            <th className="px-4 py-2.5 text-right">Action</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-skeuo-surface">
-                          {searchResults.map(p => (
-                            <tr key={p.id} className="transition-colors hover:bg-skeuo-base/60">
-                              <td className="px-4 py-3">
-                                <span className="rounded-lg bg-skeuo-red/10 px-2.5 py-1 text-xs font-black text-skeuo-red">
-                                  #{p.token}
-                                </span>
-                              </td>
-                              <td className="px-4 py-3">
-                                <p className="text-sm font-bold text-skeuo-text">{p.firstName} {p.lastName}</p>
-                              </td>
-                              <td className="hidden px-4 py-3 sm:table-cell">
-                                <p className="text-sm text-skeuo-muted">{p.phoneNumber || '—'}</p>
-                              </td>
-                              <td className="px-4 py-3 text-right">
-                                <button
-                                  onClick={() => handleConsultClick(p)}
-                                  className="inline-flex items-center gap-1.5 rounded-xl bg-skeuo-red px-3.5 py-2 text-sm font-bold text-white transition-colors hover:bg-skeuo-red-dark"
-                                >
-                                  <Video size={14} />
-                                  Consult
-                                </button>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </>
-                )}
+          {/* ================= Pending Consults ================= */}
+          <Section
+            icon={<Search className="h-4 w-4" />}
+            title="Pending Consults"
+            subtitle={loadingPatients ? 'Loading...' : `${pendingResults.length} patient${pendingResults.length !== 1 ? 's' : ''} awaiting prescription`}
+          >
+            {loadingPatients ? (
+              <div className="flex items-center justify-center gap-2 py-8 text-sm text-skeuo-muted">
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-skeuo-red border-t-transparent" />
+                Loading patients...
               </div>
+            ) : pendingResults.length === 0 ? (
+              <div className="py-8 text-center text-sm text-skeuo-muted">
+                {searchQuery.trim()
+                  ? <>No pending patients matching <span className="font-semibold text-skeuo-text">"{searchQuery}"</span></>
+                  : 'No patients pending consult today'}
+              </div>
+            ) : (
+              <PatientTable patients={pendingResults} onConsult={handleConsultClick} />
+            )}
+          </Section>
+
+          {/* ================= Completed Today ================= */}
+          <Section
+            icon={<Video className="h-4 w-4" />}
+            title="Completed Today"
+            subtitle={loadingPatients ? 'Loading...' : `${completedResults.length} already prescribed — consult again if needed`}
+          >
+            {loadingPatients ? (
+              <div className="flex items-center justify-center gap-2 py-8 text-sm text-skeuo-muted">
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-skeuo-red border-t-transparent" />
+                Loading patients...
+              </div>
+            ) : completedResults.length === 0 ? (
+              <div className="py-8 text-center text-sm text-skeuo-muted">
+                {searchQuery.trim()
+                  ? <>No completed patients matching <span className="font-semibold text-skeuo-text">"{searchQuery}"</span></>
+                  : 'No patients completed today'}
+              </div>
+            ) : (
+              <PatientTable patients={completedResults} onConsult={handleConsultClick} />
             )}
           </Section>
 

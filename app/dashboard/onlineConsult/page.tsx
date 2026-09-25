@@ -271,7 +271,7 @@ const OnlineConsultPage = () => {
           <div className="flex flex-col gap-6">
             <Section
               icon={<Activity className="h-4 w-4" />}
-              title="Live Roster"
+              title="Available Doctors"
               subtitle={`${onlineDoctors.length} doctor${onlineDoctors.length !== 1 ? 's' : ''} online`}
               className="h-full"
               bodyClassName="h-full flex flex-col"

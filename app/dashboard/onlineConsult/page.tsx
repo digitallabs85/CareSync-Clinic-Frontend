@@ -237,7 +237,7 @@ const OnlineConsultPage = () => {
                 </div>
               ) : (
                 <div className="animate-fade-in">
-                  <PatientTable patients={pendingResults} onConsult={handleConsultClick} />
+                  <PatientTable patients={pendingResults} onConsult={handleConsultClick}  variant='pending'/>
                 </div>
               )}
             </Section>
@@ -261,7 +261,7 @@ const OnlineConsultPage = () => {
                 </div>
               ) : (
                 <div className="animate-fade-in">
-                  <PatientTable patients={completedResults} onConsult={handleConsultClick} />
+                  <PatientTable patients={completedResults} onConsult={handleConsultClick} variant='completed'/>
                 </div>
               )}
             </Section>

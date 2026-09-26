@@ -64,7 +64,7 @@ const PatientTable = ({ patients, onConsult, variant = 'pending' }: PatientTable
                   }`}
                 >
                   <Video size={14} />
-                  Consult
+                  {completed? "Consult Again" : "Consult"}
                 </button>
               </td>
             </tr>

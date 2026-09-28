@@ -11,7 +11,6 @@ const STAFF_ONLY_PATHS = [
   "/dashboard/pharmacy",
 ];
 
-
 export default function DashboardLayout({
   children,
 }: {
@@ -19,11 +18,23 @@ export default function DashboardLayout({
 }) {
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [isStaff, setIsStaff] = useState(false);
+  const [minTimeElapsed, setMinTimeElapsed] = useState(false); // ✅ Added splash state
+  
   const router = useRouter();
   const pathname = usePathname();
 
   const isVideoCallRoute = pathname?.startsWith("/dashboard/video-call/");
 
+  // 1. Enforce the mandatory 3-second splash screen
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setMinTimeElapsed(true);
+    }, 3000);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  // 2. Process authorization in the background
   useEffect(() => {
     const staffToken = localStorage.getItem("user");
     const docToken = localStorage.getItem("doc_token");
@@ -41,8 +52,9 @@ export default function DashboardLayout({
     setIsAuthorized(true);
   }, [router, pathname]);
 
-  if (!isAuthorized) {
-    return <AppLoader />; // ✅ same loader as page.tsx — feels like one continuous screen
+  // Block the UI if the 3 seconds aren't up YET, OR if auth hasn't cleared
+  if (!isAuthorized || !minTimeElapsed) {
+    return <AppLoader />; 
   }
 
   return (

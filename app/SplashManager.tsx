@@ -14,7 +14,7 @@ export default function SplashManager({
     // Start the mandatory 3-second countdown the moment the app boots
     const timer = setTimeout(() => {
       setMinTimeElapsed(true);
-    }, 3000);
+    }, 1000);
 
     return () => clearTimeout(timer);
   }, []);

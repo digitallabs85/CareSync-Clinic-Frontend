@@ -10,14 +10,10 @@ import app from '../../../app.json';
 import logo from '/public/logo.png'
 import Image from 'next/image';
 
-type NavbarVariant = 'demographic' | 'vitals' | 'onlineConsult'
+type NavbarVariant = 'demographic' | 'vitals' | 'onlineConsult' | 'pharmacy'
 interface TopNavProps { variant: NavbarVariant; onAddToken?: () => void; }
 
-const SUBTITLES: Record<NavbarVariant, string> = {
-  demographic: '', vitals: 'Vitals', onlineConsult: 'Online Consultation'
-};
-
-export default function TopNav({ variant, onAddToken }: TopNavProps) {
+export default function Navbar({ variant, onAddToken }: TopNavProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -29,7 +25,7 @@ export default function TopNav({ variant, onAddToken }: TopNavProps) {
     { name: 'Demographic', path: '/dashboard/demographic/', icon: <User size={16} />, key: 'demographic' },
     { name: 'Vitals', path: '/dashboard/vitals/', icon: <Activity size={16} />, key: 'vitals' },
     { name: 'Consult', path: '/dashboard/onlineConsult/', icon: <Stethoscope size={16} />, key: 'onlineConsultation' },
-    // { name: 'Pharmacy', path: '/dashboard/pharmacy/', icon: <BriefcaseMedical size={16} />, key: 'pharmacy' },
+    { name: 'Pharmacy', path: '/dashboard/pharmacy/', icon: <BriefcaseMedical size={16} />, key: 'pharmacy' },
   ].filter(i => apiService.getPagePermissions()[i.key]);
 
   const signOut = () => {

@@ -325,4 +325,12 @@ export const apiService = {
         });
         return handleResponse(response);
     },
+
+    searchPrescriptions: async (type: 'name' | 'token' | 'mrNumber', value: string) => {
+        const response = await fetch(`${API_BASE_URL}/api/prescriptions/search?type=${type}&value=${encodeURIComponent(value)}`, {
+            method: 'GET',
+            headers: getHeaders(),
+        });
+        return handleResponse(response);
+    },
 };

@@ -173,7 +173,7 @@ export default function VideoCallClient({ vitalsId }: VideoCallClientProps) {
       console.error('Failed to record end-call timestamp:', err);
     }
     const clinic = JSON.parse(localStorage.getItem('user') || '{}');
-    window.location.href = clinic.isBifurcated ? '/dashboard/pharmacy' : '/dashboard/onlineConsult';
+    window.location.href = clinic.isBifurcated ? '/dashboard/onlineConsult' : '/dashboard/pharmacy';
   };
 
   if (error) {

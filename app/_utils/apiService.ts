@@ -333,4 +333,12 @@ export const apiService = {
         });
         return handleResponse(response);
     },
+
+    getTodayPrescriptions: async () => {
+        const response = await fetch(`${API_BASE_URL}/api/prescriptions/today`, {
+            method: 'GET',
+            headers: getHeaders(),
+        });
+        return handleResponse(response);
+    },
 };

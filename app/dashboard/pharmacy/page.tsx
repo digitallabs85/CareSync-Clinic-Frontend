@@ -1,5 +1,5 @@
 'use client'
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { Search, Loader2 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -16,8 +16,27 @@ const PharmacyPage = () => {
     const [loading, setLoading] = useState(false)
     const [selected, setSelected] = useState<any>(null)
 
+    useEffect(() => {
+        loadToday()
+    }, [])
+
+    const loadToday = async () => {
+        setLoading(true)
+        try {
+            const res = await apiService.getTodayPrescriptions()
+            setResults(Array.isArray(res) ? res : [])
+        } catch (err: any) {
+            alert(err.message || 'Failed to load')
+        } finally {
+            setLoading(false)
+        }
+    }
+
     const handleSearch = async () => {
-        if (!query.trim()) return
+        if (!query.trim()) {
+            loadToday()
+            return
+        }
         setLoading(true)
         try {
             const res = await apiService.searchPrescriptions(searchType, query.trim())

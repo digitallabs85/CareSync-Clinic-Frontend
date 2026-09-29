@@ -172,7 +172,8 @@ export default function VideoCallClient({ vitalsId }: VideoCallClientProps) {
     } catch (err) {
       console.error('Failed to record end-call timestamp:', err);
     }
-    window.location.href = '/dashboard/onlineConsult';
+    const clinic = JSON.parse(localStorage.getItem('user') || '{}');
+    window.location.href = clinic.isBifurcated ? '/dashboard/pharmacy' : '/dashboard/onlineConsult';
   };
 
   if (error) {
@@ -297,8 +298,8 @@ export default function VideoCallClient({ vitalsId }: VideoCallClientProps) {
             }}
             disabled={!localAudioTrack.current}
             className={`flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-full transition-all disabled:opacity-50 ${micOn
-                ? "bg-white/20 text-white hover:bg-white/30"
-                : "bg-white text-skeuo-text shadow-[0_0_15px_rgba(255,255,255,0.3)]"
+              ? "bg-white/20 text-white hover:bg-white/30"
+              : "bg-white text-skeuo-text shadow-[0_0_15px_rgba(255,255,255,0.3)]"
               }`}
           >
             {micOn ? <Mic size={20} /> : <MicOff size={22} className="text-rose-500" />}
@@ -323,8 +324,8 @@ export default function VideoCallClient({ vitalsId }: VideoCallClientProps) {
             }}
             disabled={!localVideoTrack.current}
             className={`flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-full transition-all disabled:opacity-50 ${videoOn
-                ? "bg-white/20 text-white hover:bg-white/30"
-                : "bg-white text-skeuo-text shadow-[0_0_15px_rgba(255,255,255,0.3)]"
+              ? "bg-white/20 text-white hover:bg-white/30"
+              : "bg-white text-skeuo-text shadow-[0_0_15px_rgba(255,255,255,0.3)]"
               }`}
           >
             {videoOn ? <Video size={20} /> : <VideoOff size={22} className="text-rose-500" />}

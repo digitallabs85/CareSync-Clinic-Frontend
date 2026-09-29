@@ -49,6 +49,8 @@ const PharmacyPage = () => {
         }
     }
 
+    console.log(results)
+
     return (
         <div className="min-h-screen bg-skeuo-base">
             <Navbar variant="pharmacy" />

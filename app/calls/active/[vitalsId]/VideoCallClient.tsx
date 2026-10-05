@@ -21,6 +21,7 @@ export default function VideoCallClient({ vitalsId }: VideoCallClientProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [micOn, setMicOn] = useState(true);
+  const [remoteMicOn, setRemoteMicOn] = useState(false);
   const [videoOn, setVideoOn] = useState(true);
   const [hasCamera, setHasCamera] = useState(true);
   const [permissionDenied, setPermissionDenied] = useState(false);
@@ -196,6 +197,7 @@ export default function VideoCallClient({ vitalsId }: VideoCallClientProps) {
             }
             if (mediaType === "audio") {
               user.audioTrack?.play();
+              setRemoteMicOn(true);
             }
           } catch (subErr) {
             console.error("Subscription failed:", subErr);
@@ -204,11 +206,13 @@ export default function VideoCallClient({ vitalsId }: VideoCallClientProps) {
 
         agora.on("user-unpublished", (_user, mediaType) => {
           if (mediaType === "video") setRemoteVideoOn(false);
+          if (mediaType === "audio") setRemoteMicOn(false);
         });
 
         agora.on("user-left", () => {
           setRemotePresent(false);
           setRemoteVideoOn(false);
+          setRemoteMicOn(false);
           setRemoteLeft(true);
         });
 
@@ -352,6 +356,14 @@ export default function VideoCallClient({ vitalsId }: VideoCallClientProps) {
                 Please keep this window open.
               </p>
             )}
+          </div>
+        )}
+        {remotePresent && !remoteMicOn && (
+          <div className="absolute bottom-32 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-full bg-black/60 px-4 py-2 ring-1 ring-white/10 backdrop-blur-xl">
+            <MicOff size={14} className="text-rose-500" />
+            <span className="text-xs font-bold uppercase tracking-widest text-white">
+              Doctor's mic is off
+            </span>
           </div>
         )}
       </div>

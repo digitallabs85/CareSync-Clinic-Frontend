@@ -359,7 +359,7 @@ export default function VideoCallClient({ vitalsId }: VideoCallClientProps) {
           </div>
         )}
         {remotePresent && !remoteMicOn && (
-          <div className="absolute bottom-32 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-full bg-black/60 px-4 py-2 ring-1 ring-white/10 backdrop-blur-xl">
+          <div className="absolute bottom-32 sm:bottom-44 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-full bg-black/60 px-4 py-2 ring-1 ring-white/10 backdrop-blur-xl">
             <MicOff size={14} className="text-rose-500" />
             <span className="text-xs font-bold uppercase tracking-widest text-white">
               Doctor's mic is off
@@ -380,7 +380,7 @@ export default function VideoCallClient({ vitalsId }: VideoCallClientProps) {
 
       {/* ================= Local Video (PIP) ================= */}
       {/* Floating glass pane pushed to the bottom right corner */}
-      <div className="absolute bottom-32 right-4 z-30 overflow-hidden rounded-2xl bg-slate-900 shadow-2xl ring-2 ring-white/20 sm:bottom-8 sm:right-8 sm:rounded-3xl">
+      <div className="absolute right-4 top-6 z-30 overflow-hidden rounded-2xl bg-slate-900 shadow-2xl ring-2 ring-white/20 sm:right-6 sm:top-8 sm:rounded-3xl">
         {hasCamera ? (
           <div
             ref={localRef}

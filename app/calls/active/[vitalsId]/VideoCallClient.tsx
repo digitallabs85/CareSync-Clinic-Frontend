@@ -57,6 +57,110 @@ export default function VideoCallClient({ vitalsId }: VideoCallClientProps) {
     }
   }, [isPrescriptionViewOpen]);
 
+  // useEffect(() => {
+  //   if (initialized.current) return;
+  //   initialized.current = true;
+
+  //   const initCall = async () => {
+  //     try {
+  //       const authToken = localStorage.getItem('token');
+  //       if (!authToken) throw new Error("No auth token found. Please log in again.");
+
+  //       const data = await apiService.getAgoraToken(vitalsId);
+
+  //       client.current = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
+  //       (window as any).__agoraClient = client.current;
+
+  //       await client.current.join(
+  //         process.env.NEXT_PUBLIC_AGORA_APP_ID!,
+  //         data.channelName,
+  //         data.token,
+  //         data.uid
+  //       );
+
+  //       client.current.on("user-published", async (user, mediaType) => {
+  //         try {
+  //           await client.current!.subscribe(user, mediaType);
+  //           if (mediaType === "video" && remoteRef.current) {
+  //             user.videoTrack?.play(remoteRef.current);
+  //           }
+  //           if (mediaType === "audio") {
+  //             user.audioTrack?.play();
+  //           }
+  //         } catch (subErr) {
+  //           console.error("Subscription failed:", subErr);
+  //         }
+  //       });
+
+  //       client.current.on("user-unpublished", (user, mediaType) => {
+  //         if (mediaType === "video" && remoteRef.current) {
+  //           remoteRef.current.innerHTML = '';
+  //         }
+  //       });
+
+  //       try {
+  //         const [audioTrack, videoTrack] = await AgoraRTC.createMicrophoneAndCameraTracks();
+  //         localAudioTrack.current = audioTrack;
+  //         localVideoTrack.current = videoTrack;
+
+  //         if (localRef.current) videoTrack.play(localRef.current);
+
+  //         await client.current.publish([audioTrack, videoTrack]);
+  //         setHasCamera(true);
+  //       } catch (deviceErr: any) {
+  //         console.warn("Camera/mic failed:", deviceErr.code);
+  //         if (
+  //           deviceErr.code === 'PERMISSION_DENIED' ||
+  //           deviceErr.message?.includes('Permission denied') ||
+  //           deviceErr.message?.includes('NotAllowedError')
+  //         ) {
+  //           setPermissionDenied(true);
+  //           setHasCamera(false);
+  //           setJoined(true);
+  //           setLoading(false);
+  //           return;
+  //         }
+
+  //         if (
+  //           deviceErr.code === 'DEVICE_NOT_FOUND' ||
+  //           deviceErr.message?.includes('NotFoundError')
+  //         ) {
+  //           try {
+  //             const audioTrack = await AgoraRTC.createMicrophoneAudioTrack();
+  //             localAudioTrack.current = audioTrack;
+  //             await client.current!.publish([audioTrack]);
+  //             setHasCamera(false);
+  //           } catch {
+  //             console.warn("No audio device — joined as listener");
+  //             setHasCamera(false);
+  //           }
+  //         }
+  //       }
+
+  //       setJoined(true);
+  //     } catch (err: any) {
+  //       console.error("Video Call Error:", err);
+  //       setError(err.message || "Failed to join call");
+  //     } finally {
+  //       setLoading(false);
+  //     }
+  //   };
+
+  //   initCall();
+
+  //   return () => {
+  //     delete (window as any).__agoraClient;
+  //     localAudioTrack.current?.stop();
+  //     localAudioTrack.current?.close();
+  //     localAudioTrack.current = null;
+  //     localVideoTrack.current?.stop();
+  //     localVideoTrack.current?.close();
+  //     localVideoTrack.current = null;
+  //     client.current?.leave();
+  //     client.current = null;
+  //   };
+  // }, [vitalsId]);
+
   useEffect(() => {
     if (initialized.current) return;
     initialized.current = true;
@@ -68,19 +172,13 @@ export default function VideoCallClient({ vitalsId }: VideoCallClientProps) {
 
         const data = await apiService.getAgoraToken(vitalsId);
 
-        client.current = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
-        (window as any).__agoraClient = client.current;
+        const agora = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
+        client.current = agora;
+        (window as any).__agoraClient = agora;
 
-        await client.current.join(
-          process.env.NEXT_PUBLIC_AGORA_APP_ID!,
-          data.channelName,
-          data.token,
-          data.uid
-        );
-
-        client.current.on("user-published", async (user, mediaType) => {
+        agora.on("user-published", async (user, mediaType) => {
           try {
-            await client.current!.subscribe(user, mediaType);
+            await agora.subscribe(user, mediaType);
             if (mediaType === "video" && remoteRef.current) {
               user.videoTrack?.play(remoteRef.current);
             }
@@ -92,11 +190,18 @@ export default function VideoCallClient({ vitalsId }: VideoCallClientProps) {
           }
         });
 
-        client.current.on("user-unpublished", (user, mediaType) => {
+        agora.on("user-unpublished", (user, mediaType) => {
           if (mediaType === "video" && remoteRef.current) {
             remoteRef.current.innerHTML = '';
           }
         });
+
+        await agora.join(
+          process.env.NEXT_PUBLIC_AGORA_APP_ID!,
+          data.channelName,
+          data.token,
+          data.uid
+        );
 
         try {
           const [audioTrack, videoTrack] = await AgoraRTC.createMicrophoneAndCameraTracks();
@@ -105,10 +210,11 @@ export default function VideoCallClient({ vitalsId }: VideoCallClientProps) {
 
           if (localRef.current) videoTrack.play(localRef.current);
 
-          await client.current.publish([audioTrack, videoTrack]);
+          await agora.publish([audioTrack, videoTrack]);
           setHasCamera(true);
         } catch (deviceErr: any) {
           console.warn("Camera/mic failed:", deviceErr.code);
+
           if (
             deviceErr.code === 'PERMISSION_DENIED' ||
             deviceErr.message?.includes('Permission denied') ||
@@ -117,7 +223,6 @@ export default function VideoCallClient({ vitalsId }: VideoCallClientProps) {
             setPermissionDenied(true);
             setHasCamera(false);
             setJoined(true);
-            setLoading(false);
             return;
           }
 
@@ -128,12 +233,11 @@ export default function VideoCallClient({ vitalsId }: VideoCallClientProps) {
             try {
               const audioTrack = await AgoraRTC.createMicrophoneAudioTrack();
               localAudioTrack.current = audioTrack;
-              await client.current!.publish([audioTrack]);
-              setHasCamera(false);
+              await agora.publish([audioTrack]);
             } catch {
               console.warn("No audio device — joined as listener");
-              setHasCamera(false);
             }
+            setHasCamera(false);
           }
         }
 

@@ -8,7 +8,7 @@ import AgoraRTC, {
   IAgoraRTCClient
 } from "agora-rtc-sdk-ng";
 import { Button } from "@/components/ui/button";
-import { Mic, MicOff, Video, VideoOff, PhoneOff, Loader2, CameraOff, AlertCircle, FileText, Menu, ChevronDown } from "lucide-react";
+import { Mic, MicOff, Video, VideoOff, PhoneOff, Loader2, CameraOff, AlertCircle, FileText, Menu, ChevronDown, User } from "lucide-react";
 import { apiService } from '@/app/_utils/apiService';
 import { PatientPrescriptionModal } from './PatientPrescriptionModal';
 
@@ -25,6 +25,10 @@ export default function VideoCallClient({ vitalsId }: VideoCallClientProps) {
   const [hasCamera, setHasCamera] = useState(true);
   const [permissionDenied, setPermissionDenied] = useState(false);
   const [isPrescriptionViewOpen, setIsPrescriptionViewOpen] = useState(false);
+
+  const [remotePresent, setRemotePresent] = useState(false);
+  const [remoteVideoOn, setRemoteVideoOn] = useState(false);
+  const [remoteLeft, setRemoteLeft] = useState(false);
 
   const client = useRef<IAgoraRTCClient | null>(null);
   const initialized = useRef(false);
@@ -176,11 +180,19 @@ export default function VideoCallClient({ vitalsId }: VideoCallClientProps) {
         client.current = agora;
         (window as any).__agoraClient = agora;
 
+        agora.on("user-joined", () => {
+          setRemotePresent(true);
+          setRemoteLeft(false);
+        });
+
         agora.on("user-published", async (user, mediaType) => {
           try {
             await agora.subscribe(user, mediaType);
+            setRemotePresent(true);
+            setRemoteLeft(false);
             if (mediaType === "video" && remoteRef.current) {
               user.videoTrack?.play(remoteRef.current);
+              setRemoteVideoOn(true);
             }
             if (mediaType === "audio") {
               user.audioTrack?.play();
@@ -190,10 +202,14 @@ export default function VideoCallClient({ vitalsId }: VideoCallClientProps) {
           }
         });
 
-        agora.on("user-unpublished", (user, mediaType) => {
-          if (mediaType === "video" && remoteRef.current) {
-            remoteRef.current.innerHTML = '';
-          }
+        agora.on("user-unpublished", (_user, mediaType) => {
+          if (mediaType === "video") setRemoteVideoOn(false);
+        });
+
+        agora.on("user-left", () => {
+          setRemotePresent(false);
+          setRemoteVideoOn(false);
+          setRemoteLeft(true);
         });
 
         await agora.join(
@@ -312,15 +328,30 @@ export default function VideoCallClient({ vitalsId }: VideoCallClientProps) {
         />
 
         {/* Loading / Waiting State */}
-        {loading && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#0A0A0A] backdrop-blur-sm">
+        {!loading && !remoteVideoOn && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#0A0A0A]">
             <div className="relative mb-6 flex h-24 w-24 items-center justify-center rounded-full bg-white/5 ring-1 ring-white/10">
-              <span className="absolute inset-0 animate-ping rounded-full bg-white/10"></span>
-              <Loader2 size={32} className="animate-spin text-skeuo-red" />
+              {!remoteLeft && !remotePresent && (
+                <span className="absolute inset-0 animate-ping rounded-full bg-white/10"></span>
+              )}
+              {remotePresent ? (
+                <VideoOff size={32} className="text-white/40" />
+              ) : (
+                <User size={32} className="text-white/40" />
+              )}
             </div>
             <p className="text-lg font-bold tracking-wide text-white">
-              Initializing secure connection...
+              {remoteLeft
+                ? "Doctor left the call"
+                : remotePresent
+                  ? "Doctor's camera is off"
+                  : "Waiting for doctor to join..."}
             </p>
+            {!remoteLeft && (
+              <p className="mt-2 text-sm font-medium text-white/50">
+                Please keep this window open.
+              </p>
+            )}
           </div>
         )}
       </div>
